@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaVision | Advanced Water Quality Monitor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0066ff;
+            --primary-dark: #0052cc;
+            --secondary: #00e676;
+            --danger: #ff3d00;
+            --warning: #ff9100;
+            --dark: #121826;
+            --light: #f8faff;
+            --gray: #e0e5f0;
+            --ph-color: #0066ff;
+            --turbidity-color: #00e676;
+            --tds-color: #ff9100;
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #121826 0%, #1e2745 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        /* Header with animated gradient */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, 
+                var(--ph-color) 0%, 
+                var(--turbidity-color) 50%, 
+                var(--tds-color) 100%);
+            background-size: 200% 200%;
+            animation: gradientFlow 8s ease infinite;
+        }
+
+        @keyframes gradientFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, white, var(--gray));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Glassmorphism cards */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .parameter-card {
+            grid-column: span 4;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .parameter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .parameter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+        }
+
+        .ph-card::before {
+            background: var(--ph-color);
+        }
+
+        .turbidity-card::before {
+            background: var(--turbidity-color);
+        }
+
+        .tds-card::before {
+            background: var(--tds-color);
+        }
+
+        .parameter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .parameter-label {
+            font-size: 1.2rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .parameter-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+
+        .ph-icon {
+            background: rgba(0, 102, 255, 0.2);
+            color: var(--ph-color);
+        }
+
+        .turbidity-icon {
+            background: rgba(0, 230, 118, 0.2);
+            color: var(--turbidity-color);
+        }
+
+        .tds-icon {
+            background: rgba(255, 145, 0, 0.2);
+            color: var(--tds-color);
+        }
+
+        .parameter-value-container {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .parameter-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .parameter-unit {
+            font-size: 1.2rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        .parameter-status {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .status-safe {
+            background: rgba(0, 230, 118, 0.2);
+            color: var(--turbidity-color);
+        }
+
+        .status-warning {
+            background: rgba(255, 145, 0, 0.2);
+            color: var(--tds-color);
+        }
+
+        .status-danger {
+            background: rgba(255, 61, 0, 0.2);
+            color: var(--danger);
+        }
+
+        /* Gauge visualization */
+        .parameter-gauge {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-top: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+
+        .ph-gauge {
+            background: linear-gradient(90deg, var(--ph-color), #66b3ff);
+        }
+
+        .turbidity-gauge {
+            background: linear-gradient(90deg, var(--turbidity-color), #66ffb3);
+        }
+
+        .tds-gauge {
+            background: linear-gradient(90deg, var(--tds-color), #ffb366);
+        }
+
+        /* Status panel with animated connection */
+        .status-panel {
+            grid-column: span 12;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger);
+            position: relative;
+        }
+
+        .status-indicator.active {
+            background: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+        }
+
+        .status-text {
+            font-weight: 500;
+        }
+
+        .connection-info {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .info-value {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .parameter-card {
+                grid-column: span 6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .parameter-card {
+                grid-column: span 1;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .parameter-value {
+                font-size: 2.8rem;
+            }
+            
+            .status-panel {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+            
+            .connection-info {
+                width: 100%;
+                justify-content: space-between;
+                gap: 1rem;
+            }
+        }
+
+        /* Animations */
+        .fadeIn {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Floating particles background */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-100px) translateX(50px); }
+            100% { transform: translateY(0) translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <header>
+            <h1>AquaVision Pro</h1>
+            <div class="subtitle">Advanced real-time water quality monitoring with precision analytics and visualization</div>
+        </header>
+        
+        <div class="dashboard">
+            <!-- pH Card -->
+            <div class="parameter-card ph-card fadeIn">
+                <div class="parameter-header">
+                    <div class="parameter-label">
+                        <div class="parameter-icon ph-icon">
+                            <i class="fas fa-water"></i>
+                        </div>
+                        <span>Salinity Level</span>
+                    </div>
+                    <div class="parameter-status status-safe">Optimal</div>
+                </div>
+                <div class="parameter-value-container">
+                    <div id="ph-value" class="parameter-value">7.2</div>
+                    <div class="parameter-unit">ppm</div>
+                </div>
+                <div class="parameter-gauge">
+                    <div id="ph-gauge" class="gauge-fill ph-gauge" style="width: 65%"></div>
+                </div>
+            </div>
+            
+            <!-- Turbidity Card -->
+            <div class="parameter-card turbidity-card fadeIn">
+                <div class="parameter-header">
+                    <div class="parameter-label">
+                        <div class="parameter-icon turbidity-icon">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <span>Turbidity</span>
+                    </div>
+                    <div class="parameter-status status-warning">Moderate</div>
+                </div>
+                <div class="parameter-value-container">
+                    <div id="turbidity-value" class="parameter-value">2.8</div>
+                    <div class="parameter-unit">NTU</div>
+                </div>
+                <div class="parameter-gauge">
+                    <div id="turbidity-gauge" class="gauge-fill turbidity-gauge" style="width: 45%"></div>
+                </div>
+            </div>
+            
+            <!-- TDS Card -->
+            <div class="parameter-card tds-card fadeIn">
+                <div class="parameter-header">
+                    <div class="parameter-label">
+                        <div class="parameter-icon tds-icon">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <span>Total Dissolved Solids</span>
+                    </div>
+                    <div class="parameter-status status-safe">Good</div>
+                </div>
+                <div class="parameter-value-container">
+                    <div id="tds-value" class="parameter-value">320</div>
+                    <div class="parameter-unit">ppm</div>
+                </div>
+                <div class="parameter-gauge">
+                    <div id="tds-gauge" class="gauge-fill tds-gauge" style="width: 32%"></div>
+                </div>
+            </div>
+            
+            <!-- Status Panel -->
+            <div class="status-panel fadeIn">
+                <div class="connection-status">
+                    <div class="status-indicator active" id="connection-status"></div>
+                    <div class="status-text">Connected to AquaVision Network</div>
+                </div>
+                <div class="connection-info">
+                    <div class="info-item">
+                        <div class="info-label">Last Update</div>
+                        <div class="info-value" id="last-update">Just now</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Data Frequency</div>
+                        <div class="info-value">Real-time</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">System Version</div>
+                        <div class="info-value">AquaVision Pro 2.4.1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhWfQlH1MRU_IxyK_O7pzj2rFtOla6eLA",
+            authDomain: "capstone-87742.firebaseapp.com",
+            databaseURL: "https://capstone-87742-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "capstone-87742",
+            storageBucket: "capstone-87742.firebasestorage.app",
+            messagingSenderId: "121983471938",
+            appId: "1:121983471938:web:8758f1c61fe008ac3738db",
+            measurementId: "G-EGSD6V7WBW"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Create background particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = window.innerWidth < 768 ? 30 : 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // Random size between 2px and 6px
+                const size = Math.random() * 4 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Random position
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                
+                // Random animation duration and delay
+                const duration = Math.random() * 20 + 10;
+                const delay = Math.random() * 5;
+                particle.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Update gauge width based on value ranges
+        function updateGauge(elementId, value, ranges) {
+            const gauge = document.getElementById(elementId);
+            let percentage = 0;
+            
+            if (value <= ranges[0]) {
+                percentage = (value / ranges[0]) * 33;
+            } else if (value <= ranges[1]) {
+                percentage = 33 + ((value - ranges[0]) / (ranges[1] - ranges[0])) * 33;
+            } else {
+                percentage = 66 + ((Math.min(value, ranges[2]) - ranges[1]) / (ranges[2] - ranges[1]) * 34);
+            }
+            
+            gauge.style.width = `${percentage}%`;
+        }
+
+        // Update status indicator
+        function updateStatus(element, value, ranges) {
+            const statusElement = element.querySelector('.parameter-status');
+            
+            if (value <= ranges[0]) {
+                statusElement.textContent = 'Optimal';
+                statusElement.className = 'parameter-status status-safe';
+            } else if (value <= ranges[1]) {
+                statusElement.textContent = 'Moderate';
+                statusElement.className = 'parameter-status status-warning';
+            } else {
+                statusElement.textContent = 'Critical';
+                statusElement.className = 'parameter-status status-danger';
+            }
+        }
+
+        // Format timestamp
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Format relative time
+        function formatRelativeTime(date) {
+            const now = new Date();
+            const diff = (now - date) / 1000; // difference in seconds
+            
+            if (diff < 10) return 'Just now';
+            if (diff < 60) return `${Math.floor(diff)} seconds ago`;
+            if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+            return `${Math.floor(diff / 86400)} days ago`;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Get HTML elements
+            const phDisplay = document.getElementById("ph-value");
+            const turbidityDisplay = document.getElementById("turbidity-value");
+            const tdsDisplay = document.getElementById("tds-value");
+            const lastUpdate = document.getElementById("last-update");
+            const connectionStatus = document.getElementById("connection-status");
+            
+            // Define parameter ranges for status and gauges
+            const parameterRanges = {
+                ph: [6.5, 8.5, 10], // Optimal < 6.5-8.5, Moderate < 8.5-10, Critical > 10
+                turbidity: [1, 5, 10], // Optimal < 1, Moderate < 1-5, Critical > 5
+                tds: [300, 600, 1000] // Optimal < 300, Moderate < 300-600, Critical > 600
+            };
+            
+            // Listen for changes at 'readings/' path
+            const readingsRef = ref(database, 'readings');
+            onValue(readingsRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const updateTime = new Date();
+                    
+                    if (data.ph !== undefined) {
+                        phDisplay.textContent = data.ph.toFixed(1);
+                        updateGauge('ph-gauge', data.ph, parameterRanges.ph);
+                        updateStatus(phDisplay.closest('.parameter-card'), data.ph, parameterRanges.ph);
+                    }
+                    
+                    if (data.turbidity !== undefined) {
+                        turbidityDisplay.textContent = data.turbidity.toFixed(1);
+                        updateGauge('turbidity-gauge', data.turbidity, parameterRanges.turbidity);
+                        updateStatus(turbidityDisplay.closest('.parameter-card'), data.turbidity, parameterRanges.turbidity);
+                    }
+                    
+                    if (data.tds !== undefined) {
+                        tdsDisplay.textContent = Math.round(data.tds);
+                        updateGauge('tds-gauge', data.tds, parameterRanges.tds);
+                        updateStatus(tdsDisplay.closest('.parameter-card'), data.tds, parameterRanges.tds);
+                    }
+                    
+                    lastUpdate.textContent = formatRelativeTime(updateTime);
+                    connectionStatus.classList.add('active');
+                    
+                    // Animate the update
+                    document.querySelectorAll('.parameter-card').forEach(card => {
+                        card.classList.remove('fadeIn');
+                        void card.offsetWidth; // Trigger reflow
+                        card.classList.add('fadeIn');
+                    });
+                }
+            });
+            
+            // Simulate connection status for demo
+            setInterval(() => {
+                connectionStatus.classList.toggle('active');
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+/*
+ * Water Quality Simulation Data Sender
+ * For ESP32 (Orphius Pico)
+ * 
+ * This code sends simulated water quality data to a web display
+ * over WiFi using WebSockets or HTTP requests
+ */
+
+#include <WiFi.h>
+#include <WebSocketsServer.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
+#include <SPIFFS.h>
+
+// ===== CONFIGURATION =====
+// WiFi credentials - UPDATE THESE
+const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";
+
+// Web display IP address - UPDATE THIS
+const char* webDisplayIP = "192.168.1.100"; // IP address of the computer running the display website
+const int webDisplayPort = 80; // Default HTTP port
+
+// Water quality parameters and simulation settings
+float pH = 7.0;          // Range: 0.0 to 14.0
+int turbidity = 100;     // Range: 1 to 500 NTU
+int tds = 500;           // Range: 10 to 2000 ppm
+
+// Update interval (milliseconds)
+const int updateInterval = 5000; // Send data every 5 seconds
+
+// ===== OBJECTS =====
+// WebSocket server on port 81
+WebSocketsServer webSocket = WebSocketsServer(81);
+
+// HTTP server on port 80
+AsyncWebServer server(80);
+
+// Timer variables
+unsigned long lastUpdateTime = 0;
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(115200);
+  Serial.println("\n\nWater Quality Simulation Data Sender");
+  Serial.println("-----------------------------------");
+  
+  // Initialize SPIFFS
+  if (!SPIFFS.begin(true)) {
+    Serial.println("An error occurred while mounting SPIFFS");
+    return;
+  }
+  
+  // Connect to WiFi
+  connectToWiFi();
+  
+  // Start WebSocket server
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  Serial.println("WebSocket server started on port 81");
+  
+  // Configure web server routes
+  setupWebServer();
+  
+  // Start web server
+  server.begin();
+  Serial.println("HTTP server started on port 80");
+  
+  // Initialize random seed
+  randomSeed(analogRead(0));
+}
+
+void loop() {
+  // Handle WebSocket events
+  webSocket.loop();
+  
+  // Check if it's time to update data
+  unsigned long currentTime = millis();
+  if (currentTime - lastUpdateTime >= updateInterval) {
+    // Update simulated water quality values
+    updateSimulatedValues();
+    
+    // Send data to connected clients
+    sendDataToClients();
+    
+    // Update the last update time
+    lastUpdateTime = currentTime;
+  }
+}
+
+void connectToWiFi() {
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("");
+    Serial.println("Failed to connect to WiFi. Check credentials or signal strength.");
+  }
+}
+
+void setupWebServer() {
+  // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
+  
+  // Route to get current values
+  server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String dataString = String(pH) + "," + String(turbidity) + "," + String(tds);
+    request->send(200, "text/plain", dataString);
+  });
+  
+  // Handle POST requests with new simulated values
+  server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
+    // Not implementing POST request handling here since we're only sending data
+    request->send(200, "text/plain", "ESP32 is in sender mode, not accepting data");
+  });
+  
+  // Set up Server-Sent Events
+  server.on("/events", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/event-stream", 
+      "event: message\ndata: " + String(pH) + "," + String(turbidity) + "," + String(tds) + "\n\n");
+  });
+}
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    // Client connected
+    case WStype_CONNECTED:
+      {
+        IPAddress ip = webSocket.remoteIP(num);
+        Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
+        
+        // Send current values immediately after connection
+        String dataString = String(pH) + "," + String(turbidity) + "," + String(tds);
+        webSocket.sendTXT(num, dataString);
+      }
+      break;
+      
+    // Client disconnected
+    case WStype_DISCONNECTED:
+      Serial.printf("[%u] Disconnected\n", num);
+      break;
+      
+    // Received text message from client
+    case WStype_TEXT:
+      Serial.printf("[%u] Received text: %s\n", num, payload);
+      break;
+  }
+}
+
+void updateSimulatedValues() {
+  // Option 1: Random fluctuations (for realistic simulation)
+  pH = constrain(pH + (random(-20, 21) / 100.0), 0.0, 14.0);
+  turbidity = constrain(turbidity + random(-10, 11), 1, 500);
+  tds = constrain(tds + random(-50, 51), 10, 2000);
+  
+  // Option 2: Pre-programmed patterns (uncomment to use)
+  // updatePatternedValues();
+  
+  // Print updated values to Serial
+  Serial.println("Updated simulated values:");
+  Serial.printf("pH: %.1f\n", pH);
+  Serial.printf("Turbidity: %d NTU\n", turbidity);
+  Serial.printf("TDS: %d ppm\n", tds);
+  Serial.println();
+}
+
+// Optional: Create patterned changes in values
+void updatePatternedValues() {
+  // Example pattern: pH gradually moving from acidic to basic
+  static float phDirection = 0.1;
+  pH += phDirection;
+  if (pH >= 14.0 || pH <= 0.0) {
+    phDirection *= -1;
+  }
+  
+  // Example pattern: Turbidity cycles between clear and cloudy
+  static int turbidityStep = 0;
+  turbidityStep = (turbidityStep + 1) % 100;
+  turbidity = 1 + (int)(249.5 * (1 + sin(turbidityStep * 0.0628)));
+  
+  // Example pattern: TDS increases then decreases
+  static int tdsStep = 0;
+  tdsStep = (tdsStep + 1) % 120;
+  tds = 10 + (int)(1990.0 * 0.5 * (1 + sin(tdsStep * 0.0523)));
+}
+
+void sendDataToClients() {
+  // Create a comma-separated string of values
+  String dataString = String(pH, 1) + "," + String(turbidity) + "," + String(tds);
+  
+  // Method 1: Send to all WebSocket clients
+  webSocket.broadcastTXT(dataString);
+  
+  // Method 2: Send HTTP POST request to the web display (alternative method)
+  sendHttpPost(dataString);
+}
+
+void sendHttpPost(String dataString) {
+  // Create WiFiClient object
+  WiFiClient client;
+  
+  // Try to connect to the web display server
+  if (client.connect(webDisplayIP, webDisplayPort)) {
+    Serial.println("Connected to web display server");
+    
+    // Create HTTP POST request
+    client.println("POST /update HTTP/1.1");
+    client.println("Host: " + String(webDisplayIP));
+    client.println("Content-Type: text/plain");
+    client.println("Content-Length: " + String(dataString.length()));
+    client.println("Connection: close");
+    client.println();
+    client.println(dataString);
+    
+    // Wait for response
+    unsigned long timeout = millis() + 5000;
+    while (client.connected() && millis() < timeout) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println("Response: " + line);
+        break;
+      }
+    }
+    
+    // Disconnect
+    client.stop();
+    Serial.println("Disconnected from web display server");
+  } else {
+    Serial.println("Failed to connect to web display server");
+  }
+}

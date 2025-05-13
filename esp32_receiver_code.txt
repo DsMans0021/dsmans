@@ -1,0 +1,216 @@
+/*
+ * Water Quality Simulator Receiver
+ * For Orphius Pico (ESP32)
+ * Science Exhibition Demo
+ * 
+ * This code allows the ESP32 to receive simulated water quality values
+ * from a web interface via WiFi and display them on Serial Monitor
+ */
+
+#include <WiFi.h>
+#include <WebServer.h>
+
+// WIFI CONFIGURATION - MODIFY THESE VALUES
+const char* ssid = "YourWiFiSSID";      // Your WiFi network name
+const char* password = "YourWiFiPassword";  // Your WiFi password
+
+// OPTIONAL - UNCOMMENT TO USE OLED
+// #include <Wire.h>
+// #include <Adafruit_GFX.h>
+// #include <Adafruit_SSD1306.h>
+// #define SCREEN_WIDTH 128
+// #define SCREEN_HEIGHT 64
+// Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+// Web server on port 80
+WebServer server(80);
+
+// Variables to store water quality values
+float pH = 7.0;
+int turbidity = 100;
+int tds = 500;
+
+// LED pins for visual indicators (optional)
+const int LED_PH = 12;       // Blue LED for pH
+const int LED_TURBIDITY = 14; // Green LED for turbidity
+const int LED_TDS = 27;       // Orange/Yellow LED for TDS
+
+void setup() {
+  // Initialize serial communication for debugging
+  Serial.begin(115200);
+  Serial.println("\n\nWater Quality Simulator Receiver");
+  Serial.println("--------------------------------");
+  
+  // Initialize LED pins
+  pinMode(LED_PH, OUTPUT);
+  pinMode(LED_TURBIDITY, OUTPUT);
+  pinMode(LED_TDS, OUTPUT);
+  
+  // Turn on all LEDs briefly to show system is starting
+  digitalWrite(LED_PH, HIGH);
+  digitalWrite(LED_TURBIDITY, HIGH);
+  digitalWrite(LED_TDS, HIGH);
+  
+  // OPTIONAL - UNCOMMENT TO USE OLED
+  // Initialize OLED display
+  // if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  //   Serial.println(F("SSD1306 allocation failed"));
+  // }
+  // display.clearDisplay();
+  // display.setTextSize(1);
+  // display.setTextColor(WHITE);
+  // display.setCursor(0, 0);
+  // display.println("Water Quality Monitor");
+  // display.display();
+  
+  // Connect to Wi-Fi
+  connectToWiFi();
+  
+  // Define server endpoints
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/update", HTTP_POST, handleUpdate);
+  
+  // Start server
+  server.begin();
+  Serial.println("HTTP server started");
+  
+  // Turn off all LEDs after startup
+  digitalWrite(LED_PH, LOW);
+  digitalWrite(LED_TURBIDITY, LOW);
+  digitalWrite(LED_TDS, LOW);
+  
+  // Display initial values
+  updateDisplay();
+}
+
+void loop() {
+  server.handleClient();
+  // Add any additional loop code here
+}
+
+void connectToWiFi() {
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  // Wait for connection
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("");
+    Serial.println("Failed to connect to WiFi. Please check credentials.");
+  }
+}
+
+void handleRoot() {
+  String html = "<!DOCTYPE html><html><body>";
+  html += "<h1>Water Quality Simulator Receiver</h1>";
+  html += "<p>Current readings:</p>";
+  html += "<ul>";
+  html += "<li>pH: " + String(pH) + "</li>";
+  html += "<li>Turbidity: " + String(turbidity) + " NTU</li>";
+  html += "<li>TDS: " + String(tds) + " ppm</li>";
+  html += "</ul>";
+  html += "<p>Use the control interface to change these values.</p>";
+  html += "</body></html>";
+  
+  server.send(200, "text/html", html);
+}
+
+void handleUpdate() {
+  if (server.hasArg("plain")) {
+    String data = server.arg("plain");
+    
+    // Parse comma-separated values
+    int firstComma = data.indexOf(',');
+    int secondComma = data.indexOf(',', firstComma + 1);
+    
+    if (firstComma > 0 && secondComma > firstComma) {
+      String phStr = data.substring(0, firstComma);
+      String turbidityStr = data.substring(firstComma + 1, secondComma);
+      String tdsStr = data.substring(secondComma + 1);
+      
+      // Convert to appropriate types
+      float newPH = phStr.toFloat();
+      int newTurbidity = turbidityStr.toInt();
+      int newTDS = tdsStr.toInt();
+      
+      // Validate ranges
+      if (newPH >= 0 && newPH <= 14 && 
+          newTurbidity >= 1 && newTurbidity <= 500 &&
+          newTDS >= 10 && newTDS <= 2000) {
+        
+        // Update values
+        pH = newPH;
+        turbidity = newTurbidity;
+        tds = newTDS;
+        
+        // Update display and visual indicators
+        updateDisplay();
+        
+        // Respond with success
+        server.send(200, "text/plain", "Values updated successfully");
+        return;
+      }
+    }
+    
+    // If we get here, there was a parsing error
+    server.send(400, "text/plain", "Invalid data format. Expected 'pH,turbidity,tds'");
+  } else {
+    server.send(400, "text/plain", "No data received");
+  }
+}
+
+void updateDisplay() {
+  // Print to Serial Monitor
+  Serial.println("\n----- Updated Water Quality Values -----");
+  Serial.print("pH: ");
+  Serial.println(pH);
+  Serial.print("Turbidity: ");
+  Serial.print(turbidity);
+  Serial.println(" NTU");
+  Serial.print("TDS: ");
+  Serial.print(tds);
+  Serial.println(" ppm");
+  Serial.println("---------------------------------------");
+  
+  // Update LED indicators based on values
+  // Example: Turn on pH LED if pH is below 7
+  digitalWrite(LED_PH, (pH < 7) ? HIGH : LOW);
+  
+  // Turn on turbidity LED if turbidity is above 200 NTU
+  digitalWrite(LED_TURBIDITY, (turbidity > 200) ? HIGH : LOW);
+  
+  // Turn on TDS LED if TDS is above 1000 ppm
+  digitalWrite(LED_TDS, (tds > 1000) ? HIGH : LOW);
+  
+  // OPTIONAL - UNCOMMENT TO USE OLED
+  // Update OLED display
+  // display.clearDisplay();
+  // display.setCursor(0, 0);
+  // display.println("Water Quality Values:");
+  // 
+  // display.print("pH: ");
+  // display.println(pH);
+  // 
+  // display.print("Turbidity: ");
+  // display.print(turbidity);
+  // display.println(" NTU");
+  // 
+  // display.print("TDS: ");
+  // display.print(tds);
+  // display.println(" ppm");
+  // 
+  // display.display();
+}

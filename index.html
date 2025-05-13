@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Quality Controller</title>
+    <style>
+        :root {
+            --ph-color: #3498db;
+            --turbidity-color: #2ecc71;
+            --tds-color: #e67e22;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .ph-section {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 5px solid var(--ph-color);
+        }
+
+        .turbidity-section {
+            background-color: rgba(46, 204, 113, 0.1);
+            border-left: 5px solid var(--turbidity-color);
+        }
+
+        .tds-section {
+            background-color: rgba(230, 126, 34, 0.1);
+            border-left: 5px solid var(--tds-color);
+        }
+
+        .slider-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider {
+            flex: 1 1 70%;
+        }
+
+        .value-display {
+            flex: 0 1 25%;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .ph-display {
+            background-color: var(--ph-color);
+            color: white;
+        }
+
+        .turbidity-display {
+            background-color: var(--turbidity-color);
+            color: white;
+        }
+
+        .tds-display {
+            background-color: var(--tds-color);
+            color: white;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .ph-section input[type="range"] {
+            background: linear-gradient(to right, #bde0ff, var(--ph-color));
+        }
+
+        .ph-section input[type="range"]::-webkit-slider-thumb {
+            background: var(--ph-color);
+        }
+
+        .turbidity-section input[type="range"] {
+            background: linear-gradient(to right, #c6f6d5, var(--turbidity-color));
+        }
+
+        .turbidity-section input[type="range"]::-webkit-slider-thumb {
+            background: var(--turbidity-color);
+        }
+
+        .tds-section input[type="range"] {
+            background: linear-gradient(to right, #ffecd2, var(--tds-color));
+        }
+
+        .tds-section input[type="range"]::-webkit-slider-thumb {
+            background: var(--tds-color);
+        }
+
+        .config-section {
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            flex: 0 0 100px;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .send-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .send-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .status {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .value-display {
+                flex: 0 1 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Water Quality Controller</h1>
+        
+        <!-- pH Control -->
+        <div class="control-section ph-section">
+            <h2>🔵 pH Level</h2>
+            <div class="slider-container">
+                <input type="range" id="ph-slider" class="slider" min="5" max="9" step="0.1" value="7.0">
+                <div id="ph-display" class="value-display ph-display">pH: 7.0</div>
+            </div>
+        </div>
+        
+        <!-- Turbidity Control -->
+        <div class="control-section turbidity-section">
+            <h2>🟢 Turbidity</h2>
+            <div class="slider-container">
+                <input type="range" id="turbidity-slider" class="slider" min="6" max="60" step="1" value="100">
+                <div id="turbidity-display" class="value-display turbidity-display">Turbidity: 100 NTU</div>
+            </div>
+        </div>
+        
+        <!-- TDS Control -->
+        <div class="control-section tds-section">
+            <h2>🟠 TDS</h2>
+            <div class="slider-container">
+                <input type="range" id="tds-slider" class="slider" min="400" max="2000" step="1" value="500">
+                <div id="tds-display" class="value-display tds-display">TDS: 500 ppm</div>
+            </div>
+        </div>
+        
+        <!-- Configuration Section -->
+        <div class="config-section">
+            <h2>Device Configuration</h2>
+            <div class="input-group">
+                <label for="device-ip">ESP32 IP:</label>
+                <input type="text" id="device-ip" value="192.168.1.100">
+            </div>
+            <div class="input-group">
+                <label for="device-port">Port:</label>
+                <input type="number" id="device-port" value="80">
+            </div>
+        </div>
+        
+        <!-- Send Button -->
+        <div class="button-container">
+            <button id="send-btn" class="send-btn">Send Values to Device</button>
+            <div id="status" class="status">Ready to send data</div>
+        </div>
+    </div>
+    <a href="water_quality_display.html"><button>Be as far as you can from Amro Salah</button></a>
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBhWfQlH1MRU_IxyK_O7pzj2rFtOla6eLA",
+        authDomain: "capstone-87742.firebaseapp.com",
+        databaseURL: "https://capstone-87742-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "capstone-87742",
+        storageBucket: "capstone-87742.firebasestorage.app",
+        messagingSenderId: "121983471938",
+        appId: "1:121983471938:web:a316ff4c25e714e73738db",
+        measurementId: "G-9LKY8SJX9C"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // Get elements
+    const phSlider = document.getElementById("ph-slider");
+    const turbiditySlider = document.getElementById("turbidity-slider");
+    const tdsSlider = document.getElementById("tds-slider");
+
+    const phDisplay = document.getElementById("ph-display");
+    const turbidityDisplay = document.getElementById("turbidity-display");
+    const tdsDisplay = document.getElementById("tds-display");
+
+    const statusDiv = document.getElementById("status");
+
+    // Update display and database
+    function updateValue(type, value) {
+        // Update display text
+        if (type === 'ph') {
+            phDisplay.textContent = `pH: ${value}`;
+        } else if (type === 'turbidity') {
+            turbidityDisplay.textContent = `Turbidity: ${value} NTU`;
+        } else if (type === 'tds') {
+            tdsDisplay.textContent = `TDS: ${value} ppm`;
+        }
+
+        // Update Firebase Realtime Database
+        set(ref(database, 'readings/' + type), parseFloat(value))
+            .then(() => {
+                statusDiv.textContent = `✅ ${type.toUpperCase()} updated: ${value}`;
+            })
+            .catch((error) => {
+                statusDiv.textContent = `❌ Error updating ${type}: ${error}`;
+            });
+    }
+
+    // Event listeners for sliders
+    phSlider.addEventListener("input", () => {
+        updateValue("ph", phSlider.value);
+    });
+
+    turbiditySlider.addEventListener("input", () => {
+        updateValue("turbidity", turbiditySlider.value);
+    });
+
+    tdsSlider.addEventListener("input", () => {
+        updateValue("tds", tdsSlider.value);
+    });
+</script>
+
+</body>
+</html>
